@@ -1,0 +1,58 @@
+module Main where
+
+import Daml.Script
+import Token 
+-- uncomment
+import UserAdmin
+setup = script do
+  -- Alice will be the creator
+  alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
+  bob <- allocatePartyWithHint "Bob" (PartyIdHint "Bob")
+  userAdmin <- allocatePartyWithHint "UserAdmin" (PartyIdHint "UserAdmin")
+
+
+  -- Uncomment this 
+
+  -- here we have a handle on the issuer contract
+  aliceIssuer <- submit userAdmin do 
+    createCmd Issuer
+      with
+        userAdmin = userAdmin
+        issuer = alice
+
+  -- alice will then exercise the choice 'MintToken'
+  -- remember to add 'nonconsuming' to the front of  'MinToken' choice in 
+  -- UserAdmin.daml, in the Issuer Template
+  originalToken <- submit alice do
+    exerciseCmd aliceIssuer MintToken
+      with
+        description = "cat pic 1"
+        initialPrice = 100.00
+        currency = "HKD"
+
+  bobOffer <- submit alice do
+    exerciseCmd originalToken Offer
+      with  
+        newOwner = bob
+        price = 200.00
+  
+  bobRequest <- submit bob do
+    createCmd OwnerRequest
+      with
+        userAdmin = userAdmin
+        owner = bob
+        reason = "I've got connections"
+  
+  -- bobOwner <- submit userAdmin do 
+  --   exerciseCmd bobRequest GrantOwnerRights
+
+  -- submit bob do
+  --   exerciseCmd bobOwner AcceptTokenAsNewOwner
+  --     with
+  --       offerId = bobOffer
+
+
+
+  
+  
+  return ()

@@ -1,0 +1,100 @@
+-- in UserAdmin.daml file
+module UserAdmin where
+import Token
+
+template Issuer
+  with
+    userAdmin: Party
+    issuer: Party
+  where
+    signatory
+      userAdmin
+    -- Current setup, once the controller exercises this choice
+    -- This contract will be archived, hence only allowing issuance once
+    -- Not expected behavior
+    -- add 'nonconsuming' to the front of MinToken
+    controller issuer can
+      -- Token type will be unrecognized, need to add
+      -- import Token at top
+      -- Current setup, once the controller exercises this choice
+      -- contract will be archived, hence only allowing issuance once
+      -- add 'nonconsuming' to the front of 'MintToken'
+      -- Prevent the contract from getting archived after MinToken is exercised
+      nonconsuming MintToken: ContractId Token
+        with
+          description: Text
+          initialPrice: Decimal 
+          currency: Text
+          -- give issuers the power to choose royalty rate
+          -- royaltyRate: Decimal
+        do
+          create Token 
+            with 
+              lastPrice = initialPrice
+              owner = issuer
+              ..
+    
+    controller userAdmin can
+      RevokeIssuer: () -- returning nothing
+        do
+          return () -- returning nothing
+
+template Owner
+  with
+    userAdmin: Party
+    owner: Party
+  where
+    signatory 
+      userAdmin
+
+    controller owner can
+      nonconsuming AcceptTokenAsNewOwner: ContractId Token
+        with 
+          -- We are passing in a contract type into this choice
+          offerId: ContractId TokenOffer
+        do
+          -- within this context, this choice is being exercised with 
+          -- the signature of the userAdmin and the owner
+          exercise offerId AcceptToken
+
+      -- instead of taking in the contract Id, we are taking in the below fields
+      -- 
+      nonconsuming AcceptTokenByKey: ContractId Token
+        with
+          issuer: Party
+          currentOwner: Party
+          description: Text
+        do
+          -- we specify the contract, the key, and the choice, 'AcceptToken'
+          -- this allows an owner to accept a token based on the key, rather than the offerId
+          -- COntract Ids will change, but the keys are more persistant
+          exerciseByKey @TokenOffer (issuer, currentOwner, description) AcceptToken
+
+    
+    -- We want the useradmin to be able to revoke the owner rights
+    controller userAdmin can 
+      RevokeOwnerRights: ()
+        do
+          return ()
+
+
+-- in UserAdmin.daml
+
+template OwnerRequest
+  with
+    userAdmin: Party
+    owner: Party
+    reason: Text -- why should I be allowed on the network
+  where
+    signatory
+      owner
+    
+    controller userAdmin can
+      GrantOwnerRights: ContractId Owner
+        do
+          create Owner with
+            ..
+      
+      RejectOwnerRequest: ()
+        do
+          return ()
