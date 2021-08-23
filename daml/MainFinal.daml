@@ -38,12 +38,12 @@ UserAdmin.daml, in the Issuer Template
 
 {-Step 3, Bob requests to become an owner-}
 
-  -- bobRequest <- submit bob do
-  --   createCmd OwnerRequest
-  --     with
-  --       userAdmin = userAdmin
-  --       owner = bob
-  --       reason = "I've got connections"
+  bobRequest <- submit bob do
+    createCmd OwnerRequest
+      with
+        userAdmin = userAdmin
+        owner = bob
+        reason = "I've got connections"
 
 {-Step 4, UserAdmin grants owner rights-}
 
