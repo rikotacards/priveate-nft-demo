@@ -1,0 +1,84 @@
+module TokenExample where
+
+-- Used for testing
+-- Daml Basics Example
+import Daml.Script 
+
+template Token 
+  with
+    issuer: Party
+    owner: Party
+    description: Text
+    userAdmin: Party -- this is the party responsible for making the issuer and owner properly onboarded to the network. 
+    lastPrice: Decimal -- keep track of the worth of the item (last purchase price)
+    currency: Text
+  where
+    signatory 
+      issuer, 
+      -- Try to comment userAdmin out then run script
+      -- userAdmin
+
+    controller owner can -- which will result in an offer template 
+      Offer: (ContractId TokenOffer) -- not created yet
+        with
+          newOwner: Party
+          price: Decimal
+          
+        do 
+          create TokenOffer with .. --with all variables in current scope
+
+-- END of Token Template
+
+template TokenOffer
+  with
+    issuer: Party
+    owner: Party
+    description: Text
+    userAdmin: Party -- this is the party responsible for making the issuer and owner properly onboarded to the network. 
+    newOwner: Party -- NEW field (these are the attributes from the offer choice)
+    price: Decimal
+    lastPrice: Decimal
+    currency: Text
+  where
+    -- these are the signatories. Issuer is signign off, userAdmin makes sure newowner and old owner are legit parties
+    -- old owner must be a sig becaues it means they signed off on potentailly letting the new owner be the owner
+    signatory issuer, userAdmin, owner
+
+    -- We want to be able to get a unique token offer based on the key
+    key (issuer, owner, description) : (Party, Party, Text)
+
+    -- Maintainer is somebody who is responsible for making sure that the key is unqiue 
+    -- it needs to be one of the parties that are in the key
+    -- the best one is the current owner of the offer, since they own the offer
+    maintainer key._2
+
+    -- newOwner can exercise the choice called Accept token 
+    -- this generates a new contract with type Token
+    -- we add 'userAdmin' to the controller, so that the acceptance must be approved
+    -- called a conjuctive choice
+    controller newOwner, userAdmin can 
+      AcceptToken: ContractId Token
+        do
+          create Token with
+            -- newOwner is now the owner
+            owner = newOwner
+            lastPrice = price
+            .. -- like a JS spread operator
+
+setup : Script ()
+setup = script do
+  alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
+  bob <- allocatePartyWithHint "Bob" (PartyIdHint "Bob")
+
+  bobToken <- submit bob do 
+    createCmd Token 
+      with  
+        issuer = bob
+        owner = bob
+        description = "This is a new NFT"
+        -- script will fail due to userAdmin in signatory of Token template
+        userAdmin = alice
+        lastPrice = 100.0
+        currency = "HKD"
+
+  return ()

@@ -3,8 +3,9 @@ module MainFinal where
 
 import Daml.Script
 import Token 
--- uncomment
 import UserAdmin
+
+setup : Script ()
 setup = script do
   -- Alice will be the creator
   alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
@@ -12,47 +13,59 @@ setup = script do
   userAdmin <- allocatePartyWithHint "UserAdmin" (PartyIdHint "UserAdmin")
 
 
-  -- Uncomment this 
+  {-
+  Step 1, UserAdmin creates a role for alice
+  "<-" means assigning the return value to the variable
+  -}
 
-  -- here we have a handle on the issuer contract
-  aliceIssuer <- submit userAdmin do 
-    createCmd Issuer
-      with
-        userAdmin = userAdmin
-        issuer = alice
+  -- aliceIssuer <- submit userAdmin do 
+  --   createCmd Issuer
+  --     with
+  --       userAdmin = userAdmin
+  --       issuer = alice
 
-  -- alice will then exercise the choice 'MintToken'
-  -- remember to add 'nonconsuming' to the front of  'MinToken' choice in 
-  -- UserAdmin.daml, in the Issuer Template
-  originalToken <- submit alice do
-    exerciseCmd aliceIssuer MintToken
-      with
-        description = "cat pic 1"
-        initialPrice = 100.00
-        currency = "HKD"
+{-Step 2, alice exercises 'MintToken'
+remember to add 'nonconsuming' to the front of  'MinToken' choice in
+UserAdmin.daml, in the Issuer Template 
+-}
 
-  bobOffer <- submit alice do
-    exerciseCmd originalToken Offer
-      with  
-        newOwner = bob
-        price = 200.00
+  -- originalToken <- submit alice do
+  --   exerciseCmd aliceIssuer MintToken
+  --     with
+  --       description = "cat pic 1"
+  --       initialPrice = 100.00
+  --       currency = "HKD"
+
+{-Step 3, Bob requests to become an owner-}
+
+  -- bobRequest <- submit bob do
+  --   createCmd OwnerRequest
+  --     with
+  --       userAdmin = userAdmin
+  --       owner = bob
+  --       reason = "I've got connections"
+
+{-Step 4, UserAdmin grants owner rights-}
+
+  -- bobOwner <- submit userAdmin do 
+  --   exerciseCmd bobRequest GrantOwnerRights
+
+{-Step 5, alice offers token to bob with new price-}
+
+  -- bobOffer <- submit alice do
+  --   exerciseCmd originalToken Offer
+  --     with  
+  --       newOwner = bob
+  --       price = 200.00
   
-  bobRequest <- submit bob do
-    createCmd OwnerRequest
-      with
-        userAdmin = userAdmin
-        owner = bob
-        reason = "I've got connections"
-  
-  bobOwner <- submit userAdmin do 
-    exerciseCmd bobRequest GrantOwnerRights
+{-Step 6, bob accepts offer as new owner-}
 
-  submit bob do
-    exerciseCmd bobOwner AcceptTokenAsNewOwner
-      with
-        offerId = bobOffer
+  -- submit bob do
+  --   exerciseCmd bobOwner AcceptTokenAsNewOwner
+  --     with
+  --       offerId = bobOffer
 
-  
+  {-Test-}
   -- submit bob do 
   --   -- this will result in an error
   --   -- we have not onboarded Bob yet
